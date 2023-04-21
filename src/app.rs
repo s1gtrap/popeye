@@ -26,7 +26,6 @@ fn optimize(sets: Vec<Vec<Exercise>>) -> Vec<Vec<Exercise>> {
             (g, t)
         },
     );
-    log::info!("{:?}", petgraph::dot::Dot::new(&g));
 
     let mut nodes: Vec<_> = g.node_indices().collect();
     nodes.sort_by_key(|n| -(g.neighbors(*n).count() as isize));
@@ -37,6 +36,7 @@ fn optimize(sets: Vec<Vec<Exercise>>) -> Vec<Vec<Exercise>> {
     let mut c = 0;
     let mut s = vec![];
     while let Some(n) = g.node_indices().max_by_key(|n| g.neighbors(*n).count()) {
+        log::info!("{:?}", petgraph::dot::Dot::new(&g));
         let mut neighbors = g.neighbors(n).collect::<HashSet<_>>();
         log::info!("coloring {n:?} = {c}");
         s.push(vec![EXERCISES[&g.node_weight(n).unwrap()[..]]]);
@@ -51,6 +51,8 @@ fn optimize(sets: Vec<Vec<Exercise>>) -> Vec<Vec<Exercise>> {
             neighbors.extend(g.neighbors(n0));
             g.neighbors(n).collect::<HashSet<_>>();
         }
+        v.sort_by_key(|w| std::cmp::Reverse(*w)); // FIXME: needed to make sure highest indices are
+                                                  // visited first to avoid shrinking beforehands
         for n in v {
             g.remove_node(n);
         }
@@ -62,6 +64,8 @@ fn optimize(sets: Vec<Vec<Exercise>>) -> Vec<Vec<Exercise>> {
 
 #[test]
 fn test_optimize() {
+    env_logger::try_init();
+
     assert_eq!(optimize(vec![]), Vec::<Vec<Exercise>>::new());
     assert_eq!(
         optimize(vec![vec![EXERCISES["DumbbellCurl"]]]),
@@ -126,6 +130,28 @@ fn test_optimize() {
         vec![
             vec![EXERCISES["BarbellCurl"], EXERCISES["InclineBenchPress"]],
             vec![EXERCISES["BarbellCurl"], EXERCISES["InclineBenchPress"]],
+        ],
+    );
+    assert_eq!(
+        optimize(vec![
+            vec![EXERCISES["InclineBenchPress"]],
+            vec![EXERCISES["InclineBenchPress"]],
+            vec![EXERCISES["BarbellCurl"]],
+        ]),
+        vec![
+            vec![EXERCISES["InclineBenchPress"], EXERCISES["BarbellCurl"]],
+            vec![EXERCISES["InclineBenchPress"]],
+        ],
+    );
+    assert_eq!(
+        optimize(vec![
+            vec![EXERCISES["InclineBenchPress"]],
+            vec![EXERCISES["BarbellCurl"]],
+            vec![EXERCISES["InclineBenchPress"]],
+        ]),
+        vec![
+            vec![EXERCISES["InclineBenchPress"], EXERCISES["BarbellCurl"]],
+            vec![EXERCISES["InclineBenchPress"]],
         ],
     );
 }
